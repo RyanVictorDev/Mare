@@ -310,12 +310,31 @@
     B.turtle.count = TURTLES.length;
     Cr.nearTurtle = near;
 
-    // ----- baleia: dá a volta no mundo todo, devagar -----
+    // ----- baleia: dá a volta no mar aberto, por fora da fossa e do poço -----
     {
-      const wh = Cr.whale, a = t * 0.0155 + 1.15, r = 236 + 28 * Math.sin(a * 3);
+      const wh = Cr.whale, a = t * 0.0155 + 1.15;
+      const clearOf = (x, z, cx, cz, rx, rz) => {
+        const ax = (x - cx) / rx, az = (z - cz) / rz;
+        return ax * ax + az * az;
+      };
+      const whaleR = ang => {
+        let r = 200 + 16 * Math.sin(ang * 2);
+        for (let n = 0; n < 6; n++) {
+          const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
+          const fossa = clearOf(x, z, 60, 195, 120, 74);
+          const poco = clearOf(x, z, -248, -148, 102, 80);
+          if (fossa < 1) r += (1 - fossa) * 90 + 16;
+          else if (poco < 1) r -= (1 - poco) * 80 + 16;
+          else break;
+        }
+        return M.clamp(r, 150, 300);
+      };
+      const r = whaleR(a);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const a2 = a + 0.01, r2 = 236 + 28 * Math.sin(a2 * 3), vx = Math.cos(a2) * r2 - x, vz = Math.sin(a2) * r2 - z;
-      const target = M.clamp(Math.max(-17 + 5 * Math.sin(a * 5), W.heightAt(x, z) + 8), -45, -6);
+      const a2 = a + 0.01, r2 = whaleR(a2), vx = Math.cos(a2) * r2 - x, vz = Math.sin(a2) * r2 - z;
+      const floor = W.heightAt(x, z);
+      const shallow = -16 + 4 * Math.sin(a * 5);
+      const target = floor < -38 ? shallow : M.clamp(Math.max(shallow, floor + 8), -28, -6);
       const prevY = wh.y;
       wh.y += (target - wh.y) * Math.min(1, dt * 0.25);
       const pitch = dt > 0 ? M.clamp(((wh.y - prevY) / dt) * 0.3, -0.3, 0.3) : 0;
@@ -348,34 +367,49 @@
     B.jelly.count = nj;
     Cr.nearJelly = near;
 
-    // ----- golfinhos: arcos perto da superfície -----
+    // ----- golfinhos: arcos perto da superfície; um pode vir nadar ao lado -----
+    let escortTaken = false;
     for (let i = 0; i < DOLPHINS.length; i++) {
       const m = DOLPHINS[i], a = t * m.w + i * 2.2;
-      let x = m.x + Math.cos(a) * m.R, z = m.z + Math.sin(a * 0.9) * m.R * 0.75;
-      let y = m.y + Math.sin(a * 2.2) * 1.7;
-      let yaw, pitch;
-      const orbitD = Math.hypot(x - px, y - py, z - pz);
-      if ((m.escort || 0) <= 0 && orbitD < 9 && swim > 2.2) {
-        m.escort = 7;
+      const ox = m.x + Math.cos(a) * m.R, oz = m.z + Math.sin(a * 0.9) * m.R * 0.75;
+      let oy = m.y + Math.sin(a * 2.2) * 1.7;
+      oy = Math.max(oy, W.heightAt(ox, oz) + 1.4);
+      if (oy > -1.2) oy = -1.2;
+      const ovx = -Math.sin(a) * m.R, ovz = Math.cos(a * 0.9) * m.R * 0.75 * 0.9, ovy = Math.cos(a * 2.2) * 1.7 * 2.2;
+      const oyaw = Math.atan2(ovx, ovz), opitch = Math.atan2(ovy, Math.hypot(ovx, ovz)) * 0.6;
+      const orbitD = Math.hypot(ox - px, oy - py, oz - pz);
+      if (!escortTaken && (m.escort || 0) <= 0 && (m.cool || 0) <= 0 && orbitD < 12 && swim > 1.8 && py > -16) {
+        m.escort = 6;
         note('dolphin', 'Companhia', 'Um golfinho pegou o seu ritmo e nada ao lado.');
-      }
+      } else if ((m.escort || 0) <= 0 && (m.cool || 0) > 0) m.cool -= dt;
+      let tx = ox, ty = oy, tz = oz, tyaw = oyaw, tpitch = opitch;
       if ((m.escort || 0) > 0) {
+        escortTaken = true;
         m.escort -= dt;
+        if (m.escort <= 0) {
+          m.escort = 0;
+          m.cool = 14;
+        }
         const side = i % 2 ? 1 : -1;
         const fy = Math.sin(face), fz = -Math.cos(face), rx = Math.cos(face), rz = Math.sin(face);
-        x = px + fy * 2.5 + rx * side * 1.8;
-        z = pz + fz * 2.5 + rz * side * 1.8;
-        y = Math.min(-1.4, py);
-        yaw = face;
-        pitch = 0;
-      } else {
-        const vx = -Math.sin(a) * m.R, vz = Math.cos(a * 0.9) * m.R * 0.75 * 0.9, vy = Math.cos(a * 2.2) * 1.7 * 2.2;
-        yaw = Math.atan2(vx, vz);
-        pitch = Math.atan2(vy, Math.hypot(vx, vz)) * 0.6;
+        tx = px + fy * 3.2 + rx * side * 2.2;
+        tz = pz + fz * 3.2 + rz * side * 2.2;
+        ty = Math.min(-1.35, Math.max(-6, py));
+        ty = Math.max(ty, W.heightAt(tx, tz) + 1.3);
+        if (ty > -1.2) ty = -1.2;
+        tyaw = Math.atan2(fy, fz);
+        tpitch = 0;
       }
-      y = Math.max(y, W.heightAt(x, z) + 1.4);
-      if (y > -1.15) y = -1.15;
-      put(B.dolphin.data, i * 12, x, y, z, m.size, yaw, pitch, i * 1.3, 1, 1, 1, 1, 0);
+      if (m.sx === undefined) {
+        m.sx = ox; m.sy = oy; m.sz = oz; m.syaw = oyaw;
+      }
+      const follow = (m.escort || 0) > 0;
+      const k = 1 - Math.exp(-dt * (follow ? 2.4 : 1.4));
+      m.sx += (tx - m.sx) * k;
+      m.sy += (ty - m.sy) * k;
+      m.sz += (tz - m.sz) * k;
+      m.syaw += wrap(tyaw - m.syaw) * k;
+      put(B.dolphin.data, i * 12, m.sx, m.sy, m.sz, m.size, m.syaw, follow ? tpitch : opitch, i * 1.3, 1, 1, 1, 1, 0);
     }
     B.dolphin.count = DOLPHINS.length;
 
