@@ -7,9 +7,9 @@
   const W = (M.world = {});
   const lerp = M.lerp, smooth = M.smooth, clamp = M.clamp, mixc = M.mixc;
 
-  const SIZE = 330, N = 264, CELL = (SIZE * 2) / N, NV = N + 1;
+  const SIZE = 400, N = 264, CELL = (SIZE * 2) / N, NV = N + 1;
   const CHUNKS = 8, CH = N / CHUNKS;
-  const ICELL = 33, IGRID = 20;
+  const IGRID = 20, ICELL = (SIZE * 2) / IGRID;
   const TAU = Math.PI * 2;
 
   W.SIZE = SIZE;
@@ -21,6 +21,8 @@
     { id: 'naufragio', name: 'Naufrágio do Aurora', x: -55, z: -165, r: 55 },
     { id: 'ruinas', name: 'Ruínas Submersas', x: -175, z: 15, r: 56 },
     { id: 'fossa', name: 'Fossa Abissal', x: 60, z: 195, r: 92, rz: 44 },
+    { id: 'anemonas', name: 'Jardim de Anêmonas', x: 248, z: 138, r: 62 },
+    { id: 'poco', name: 'Poço das Sombras', x: -248, z: -148, r: 72, rz: 50 },
   ];
   const Z = {};
   W.zones.forEach(z => (Z[z.id] = z));
@@ -43,8 +45,12 @@
     const aw = abyssW(x, z);
     h -= aw * 62;
     h += (n2 - 0.5) * 30 * aw * (1 - aw) * 4;
+    h = lerp(h, -15 + (n2 - 0.5) * 3.2, zw(x, z, Z.anemonas, 0.45));
+    const px = (x - Z.poco.x) / Z.poco.r, pz = (z - Z.poco.z) / Z.poco.rz, pw = Math.exp(-(px * px + pz * pz) * 1.6);
+    h -= pw * 54;
+    h += (n2 - 0.5) * 18 * pw * (1 - pw) * 3;
     // a borda sobe, mas fica debaixo d'água: vista de cima, o mar segue até o horizonte
-    h = lerp(h, -5.5, smooth(250, 320, Math.hypot(x, z)));
+    h = lerp(h, -5.5, smooth(318, 392, Math.hypot(x, z)));
     return h;
   }
 
@@ -65,6 +71,9 @@
       if (zn.id === 'fossa') {
         const ax = (x - zn.x) / zn.r, az = (z - zn.z) / zn.rz;
         if (ax * ax + az * az < 1 && y < -40) return zn;
+      } else if (zn.id === 'poco') {
+        const ax = (x - zn.x) / zn.r, az = (z - zn.z) / zn.rz;
+        if (ax * ax + az * az < 1 && y < -30) return zn;
       } else if (Math.hypot(x - zn.x, z - zn.z) < zn.r * 0.8) return zn;
     }
     return null;
@@ -96,6 +105,7 @@
         c = mixc(c, mead, zw(x, z, Z.pradaria, 0.4) * 0.55);
         c = mixc(c, algae, smooth(0.5, 0.75, np) * smooth(45, 25, depth) * 0.55);
         c = mixc(c, deepC, smooth(34, 62, depth));
+        c = mixc(c, [0.9, 0.48, 0.58], zw(x, z, Z.anemonas, 0.35) * 0.5);
         const rk = smooth(0.07, 0.24, slope);
         c = mixc(c, mixc(rockC, [0.25, 0.26, 0.3], n2), rk);
         verts[o] = x; verts[o + 1] = h; verts[o + 2] = z;
@@ -204,7 +214,7 @@
     const scatter = (n, cx, cz, r, fn) => {
       for (let i = 0; i < n; i++) {
         const a = R() * TAU, d = Math.sqrt(R()) * r, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
-        if (Math.hypot(x, z) > 288) continue;
+        if (Math.hypot(x, z) > 368) continue;
         const h = W.heightAt(x, z);
         if (h > -3.5) continue;
         fn(x, z, h, W.slopeAt(x, z));
@@ -226,7 +236,7 @@
       if (M.noise2(x * 0.045, z * 0.045, 31) < 0.4) return;
       kelpAt(x, z, h);
     });
-    scatter(2200, 0, 0, 285, (x, z, h, s) => {
+    scatter(2700, 0, 0, 350, (x, z, h, s) => {
       if (s > 0.2 || h > -14 || h < -42 || blocked(x, z, 3) || nearPearl(x, z, 5)) return;
       if (zw(x, z, Z.recife, 0.6) > 0.3 || zw(x, z, Z.naufragio, 0.85) > 0 || zw(x, z, Z.ruinas, 0.75) > 0) return;
       if (M.noise2(x * 0.03, z * 0.03, 37) < 0.64) return;
@@ -241,7 +251,7 @@
     scatter(1600, Z.recife.x, Z.recife.z, 88, (x, z, h, s) => {
       if (s < 0.15 && M.noise2(x * 0.07, z * 0.07, 43) > 0.55) grassAt(x, z, h);
     });
-    scatter(3500, 0, 0, 285, (x, z, h, s) => {
+    scatter(4300, 0, 0, 350, (x, z, h, s) => {
       if (s < 0.15 && h > -36 && !blocked(x, z, 0) && M.noise2(x * 0.04, z * 0.04, 47) > 0.6) grassAt(x, z, h);
     });
 
@@ -256,7 +266,7 @@
       else if (r < 0.88) add('fan', x, h, z, (1.1 + R() * 1.5) * k, yaw, 1, ph, c[0], c[1], c[2]);
       else add('anemone', x, h, z, (0.7 + R() * 0.8) * k, yaw, 1, ph, c[0], c[1], c[2]);
     };
-    scatter(2800, Z.recife.x, Z.recife.z, 88, (x, z, h, s) => {
+    scatter(3400, Z.recife.x, Z.recife.z, 88, (x, z, h, s) => {
       if (s > 0.3 || nearPearl(x, z, 2.5) || M.fbm2(x * 0.05, z * 0.05, 2, 41) < 0.45) return;
       coralAt(x, z, h, 1);
     });
@@ -266,7 +276,7 @@
     scatter(240, RU.x, RU.z, 42, (x, z, h, s) => {
       if (s < 0.3 && !blocked(x, z, 0.5) && !nearPearl(x, z, 2.5)) coralAt(x, z, h, 0.8);
     });
-    scatter(1200, 0, 0, 285, (x, z, h, s) => {
+    scatter(1600, 0, 0, 350, (x, z, h, s) => {
       if (s < 0.3 && h > -36 && !blocked(x, z, 1) && !nearPearl(x, z, 2.5) && M.fbm2(x * 0.04, z * 0.04, 2, 53) > 0.6) coralAt(x, z, h, 0.9);
     });
 
@@ -276,7 +286,7 @@
       add(R() < 0.5 ? 'rockA' : 'rockB', x, y, z, sc, R() * TAU, hs, 0, t + w, t, t - w);
       if (sc > 1.6) put({ x: x, y: y, z: z, r: sc * 0.82, ry: sc * 0.55 * hs });
     };
-    scatter(1700, 0, 0, 290, (x, z, h, s) => {
+    scatter(2100, 0, 0, 355, (x, z, h, s) => {
       if (blocked(x, z, 3) || nearPearl(x, z, 4)) return;
       if (M.noise2(x * 0.03, z * 0.03, 51) < 0.5 && s < 0.2) return;
       rockAt(x, z, h, 0.5 + R() * R() * 3.4, 0.8 + R() * 0.5);
@@ -295,10 +305,10 @@
     };
     for (let i = 0; i < 70; i++) {
       const a = R() * TAU, f = 0.95 + R() * 0.7, x = Z.fossa.x + Math.cos(a) * Z.fossa.r * f * 0.8, z = Z.fossa.z + Math.sin(a) * Z.fossa.rz * f;
-      if (Math.hypot(x, z) < 280) pinnacle(x, z, W.heightAt(x, z));
+      if (Math.hypot(x, z) < 360) pinnacle(x, z, W.heightAt(x, z));
     }
     scatter(45, 100, 30, 42, pinnacle);
-    scatter(50, 0, 0, 270, (x, z, h) => {
+    scatter(70, 0, 0, 340, (x, z, h) => {
       if (h < -20 && zw(x, z, Z.naufragio, 0.8) < 0.1) pinnacle(x, z, h);
     });
 
@@ -311,7 +321,7 @@
     };
     scatter(800, Z.recife.x, Z.recife.z, 90, starAt);
     scatter(400, Z.pradaria.x, Z.pradaria.z, 70, starAt);
-    scatter(700, 0, 0, 280, starAt);
+    scatter(900, 0, 0, 350, starAt);
 
     // plantas luminosas da fossa
     const GPAL = [[0.2, 0.9, 1], [0.6, 0.4, 1], [0.3, 1, 0.6], [0.2, 0.6, 1]];
@@ -319,6 +329,17 @@
       if (h > -44 || s > 0.45 || nearPearl(x, z, 2)) return;
       const c = GPAL[(R() * GPAL.length) | 0];
       add('bulb', x, h - 0.05, z, 0.9 + R() * 2.4, R() * TAU, 1, R() * TAU, c[0], c[1], c[2], 1.3 + R() * 0.8);
+    });
+    scatter(900, Z.poco.x, Z.poco.z, 68, (x, z, h, s) => {
+      if (h > -34 || s > 0.5 || nearPearl(x, z, 2)) return;
+      const c = GPAL[(R() * GPAL.length) | 0];
+      add('bulb', x, h - 0.05, z, 0.8 + R() * 2.1, R() * TAU, 1, R() * TAU, c[0], c[1], c[2], 1.2 + R() * 0.7);
+    });
+    scatter(1400, Z.anemonas.x, Z.anemonas.z, 58, (x, z, h, s) => {
+      if (s > 0.32 || nearPearl(x, z, 2.5)) return;
+      const c = jit(PAL[(R() * PAL.length) | 0], 0.12);
+      if (R() < 0.62) add('anemone', x, h, z, 0.85 + R() * 1.15, R() * TAU, 1, R() * TAU, c[0], c[1], c[2]);
+      else coralAt(x, z, h, 1);
     });
 
     // organiza por células para desenhar só o que está por perto
@@ -347,9 +368,24 @@
     }
 
     // fontes de bolhas no fundo
-    W.vents = [[22, 22], [-70, 100], [160, -20], [-40, -150], [-150, 35], [50, 200], [92, 186]].map(v => ({ x: v[0], y: W.heightAt(v[0], v[1]) + 0.2, z: v[1] }));
+    W.vents = [[22, 22], [-70, 100], [160, -20], [-40, -150], [-150, 35], [50, 200], [92, 186], [248, 138], [-248, -148]].map(v => ({ x: v[0], y: W.heightAt(v[0], v[1]) + 0.2, z: v[1] }));
+    W.parts = [
+      { x: -42, z: -142, name: 'hélice' },
+      { x: -198, z: 46, name: 'núcleo' },
+      { x: -248, z: -148, name: 'carcaça' },
+    ].map(p => ({ x: p.x, y: W.heightAt(p.x, p.z) + 1.15, z: p.z, name: p.name }));
     W.wreck = WR;
     W.ruins = RU;
     W.spawn = { x: 0, y: W.heightAt(0, 62) + 5, z: 62 };
+  };
+
+  // Corrente lenta em anel, no jardim de anêmonas. Devolve [vx, vz] ou null.
+  W.current = function (x, z) {
+    const zn = Z.anemonas;
+    if (!zn) return null;
+    const dx = x - zn.x, dz = z - zn.z, d = Math.hypot(dx, dz);
+    if (d < 16 || d > 54) return null;
+    const k = 3.1 * (1 - Math.abs(d - 35) / 19);
+    return [(-dz / d) * k, (dx / d) * k];
   };
 })();

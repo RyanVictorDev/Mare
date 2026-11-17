@@ -4,7 +4,7 @@
   const M = window.MARE, W = M.world, Rn = M.render, Cr = M.creatures, A = M.audio;
   const $ = id => document.getElementById(id);
   const SAVE_KEY = 'mare-save-v1', SET_KEY = 'mare-config-v1';
-  const NP = 12, PR = 0.6, TAU = Math.PI * 2;
+  const NP = 12, NPART = 3, PR = 0.6, TAU = Math.PI * 2;
 
   const JOURNAL = [
     { id: 'recife', t: 'Recife de Coral', d: 'Um jardim raso e colorido, onde a luz do sol dança sobre a areia.', h: 'Onde todo mergulho começa.' },
@@ -14,10 +14,20 @@
     { id: 'naufragio', t: 'Naufrágio do Aurora', d: 'Um veleiro antigo descansa de lado na areia. Hoje é lar de cardumes.', h: 'Ao norte, depois da planície de areia, algo grande dorme no fundo.' },
     { id: 'ruinas', t: 'Ruínas Submersas', d: 'Colunas de um templo esquecido. No altar, alguém deixou um presente.', h: 'A oeste, pedras que não foram feitas pelo mar.' },
     { id: 'fossa', t: 'Fossa Abissal', d: 'Lá embaixo o sol não chega. A luz que existe é a dos próprios seres.', h: 'Ao sul, o chão desaparece. Leve a lanterna.' },
+    { id: 'anemonas', t: 'Jardim de Anêmonas', d: 'Um anel de corrente lenta, e anêmonas que abrem quando você chega perto.', h: 'A nordeste do recife, a água começa a girar.' },
+    { id: 'poco', t: 'Poço das Sombras', d: 'Um segundo abismo, menor e mais quieto. Lulas descem até onde a lanterna mal alcança.', h: 'A sudoeste, depois do naufrágio, o fundo se abre de novo.' },
     { id: 'arraia', t: 'Arraia-manta', d: 'Voa em vez de nadar. Gira em círculos largos, sem pressa nenhuma.', h: 'Olhe para cima no recife e na pradaria.' },
     { id: 'tartaruga', t: 'Tartaruga-marinha', d: 'Viajante antiga, passeia entre os corais como quem conhece o caminho.', h: 'Costuma rondar o recife e a floresta de algas.' },
     { id: 'baleia', t: 'Baleia-jubarte', d: 'Vinte e três metros de calma. O canto dela atravessa o oceano inteiro.', h: 'Siga o canto. Ela dá a volta no mundo, perto das bordas.' },
     { id: 'aguaviva', t: 'Águas-vivas luminosas', d: 'Lanternas vivas pulsando no escuro, subindo e descendo devagar.', h: 'Só brilham onde a luz do sol não alcança.' },
+    { id: 'tubarao', t: 'Tubarão-de-recife', d: 'Passa largo, sem pressa e sem fome. Se você chega perto, ele só abre espaço.', h: 'Cruza o recife e a borda da floresta de algas.' },
+    { id: 'polvo', t: 'Polvo', d: 'Muda de cor se você chega devagar. Se chega rápido, a tinta responde por ele.', h: 'Um no naufrágio, outro no jardim de anêmonas.' },
+    { id: 'cavalo', t: 'Cavalo-marinho', d: 'Segura a alga com a cauda. A luz da lanterna faz ele virar o focinho.', h: 'No meio da floresta de algas, bem pequeno.' },
+    { id: 'peixelua', t: 'Peixe-lua', d: 'Um disco enorme e lento. Se você para, ele vem ver quem é.', h: 'Perto da superfície, no mar aberto a leste.' },
+    { id: 'tamboril', t: 'Peixe-pescador', d: 'A luz na frente da boca não é um convite. Chegue perto e ele avança, depois se esconde.', h: 'No fundo da fossa, onde as outras luzes são plantas.' },
+    { id: 'lula', t: 'Lula-de-vidro', d: 'Pulsa no escuro. Se você se aproxima, ela dispara para trás num jato.', h: 'Na fossa e no poço das sombras.' },
+    { id: 'leviata', t: 'Sombra da Fossa', d: 'Maior que a baleia, e sem canto. Só o deslocamento da água quando ela passa.', h: 'Desça até o fundo da fossa e espere.' },
+    { id: 'propulsor', t: 'Propulsor das Marés', d: 'As três peças encaixaram. A água abre caminho, e o nado fica bem mais rápido.', h: 'Hélice no naufrágio, núcleo nas ruínas, carcaça no poço a sudoeste.' },
     { id: 'coracao', t: 'Coração do Mar', d: 'As doze pérolas reunidas. O plâncton acendeu, e o oceano inteiro agradece.', h: 'Reúna as doze pérolas.' },
   ];
 
@@ -34,14 +44,17 @@
   let flash = false, flashK = 0, bloom = 0, fade = 0, fadeTarget = 1;
   let breathT = 0, exhaleLeft = 0, exhaleAcc = 0, ventAcc = 0;
   let checkT = 0, saveT = 0, curZone = null, zoneTimer = 0;
-  let sonar = { on: false, t: 0, i: -1, cool: 0 };
+  let sonar = { on: false, t: 0, i: -1, cool: 0, kind: 'pearl' };
   let fpsEma = 60, slowT = 0, fastT = 0, autoLevel = 1, ceiling = 2, fpsShowT = 0;
   const LEVELS = ['low', 'medium', 'high'];
   const bubbles = [], bursts = [], toasts = [], hints = [];
-  let toastT = 0, hintT = 0, darkHint = false;
+  let toastT = 0, hintT = 0, darkHint = false, currentNoted = false;
   let aboveSm = 0, splashK = 0, wasAir = false;
   const bubData = new Float32Array(600 * 8), glowData = new Float32Array(64 * 8), pearlData = new Float32Array(NP * 12);
   const pearlDyn = { mesh: 'pearl', prog: 'static', data: pearlData, count: NP };
+  const partData = new Float32Array(NPART * 12);
+  const partDyn = { mesh: 'part', prog: 'fish', data: partData, count: NPART };
+  const PART_TINT = [[0.95, 0.62, 0.28], [0.45, 0.95, 1], [0.8, 0.86, 0.92]];
   const camPos = [0, 0, 0], camFwd = [0, 0, -1];
   const frame = { pos: camPos, fwd: camFwd, time: 0, flash: 0, bloom: 0, fade: 1, above: 0, splash: 0, dyn: [], glows: { data: glowData, count: 0 }, bubbles: { data: bubData, count: 0 } };
 
@@ -60,12 +73,13 @@
       } catch (e) { /* sem armazenamento: o jogo segue, só não guarda o progresso */ }
     },
   };
-  const freshSave = () => ({ pearls: new Array(NP).fill(false), seen: {}, pos: null, yaw: 0, pitch: 0, done: false, hinted: false });
+  const freshSave = () => ({ pearls: new Array(NP).fill(false), parts: [false, false, false], seen: {}, pos: null, yaw: 0, pitch: 0, done: false, hinted: false });
   function loadAll() {
     const s = store.get(SET_KEY);
     if (s && typeof s === 'object') settings = Object.assign(settings, s);
     const g = store.get(SAVE_KEY);
     save = g && Array.isArray(g.pearls) && g.pearls.length === NP ? Object.assign(freshSave(), g) : freshSave();
+    if (!Array.isArray(save.parts) || save.parts.length !== NPART) save.parts = [false, false, false];
   }
   function saveGame() {
     if (mode === 'play' || mode === 'pause') {
@@ -77,7 +91,8 @@
   }
   const saveSettings = () => store.set(SET_KEY, settings);
   const pearlCount = () => save.pearls.filter(Boolean).length;
-  const hasProgress = () => pearlCount() > 0 || Object.keys(save.seen).length > 1;
+  const partCount = () => save.parts.filter(Boolean).length;
+  const hasProgress = () => pearlCount() > 0 || partCount() > 0 || Object.keys(save.seen).length > 1;
 
   // ---------- interface ----------
   function show(id, on) {
@@ -99,6 +114,7 @@
       li.className = seen ? 'seen' : '';
       b.textContent = seen ? e.t : '· · ·';
       s.textContent = seen ? e.d : e.h;
+      if (e.id === 'propulsor' && seen && partCount() < NPART) s.textContent = 'Peça ' + partCount() + ' de 3. O nado já está mais leve.';
       li.append(b, s);
       list.append(li);
     }
@@ -106,6 +122,7 @@
     $('j-total').textContent = JOURNAL.length;
     $('j-pearls').textContent = pearlCount();
     $('pearl-n').textContent = pearlCount();
+    $('part-n').textContent = partCount();
   }
   function discover(id) {
     if (save.seen[id]) return;
@@ -215,6 +232,7 @@
         hint('Aquele brilho logo à frente é uma pérola. Chegue perto para pegá-la.', 18);
         hint('Sonar aponta a pérola mais próxima', 27);
         hint('Segure subir até romper a água', 36);
+        hint('Há peças de um propulsor no naufrágio, nas ruínas e no poço a sudoeste', 48);
       } else {
         hint('W A S D para nadar · mouse para olhar', 2.5);
         hint('Espaço sobe · C desce · Shift nada mais rápido', 10);
@@ -222,6 +240,7 @@
         hint('E solta o sonar, que aponta a pérola mais próxima', 27);
         hint('Tab abre o diário de mergulho', 36);
         hint('Segure Espaço para subir até a superfície', 46);
+        hint('Há peças de um propulsor no naufrágio, nas ruínas e no poço a sudoeste', 58);
       }
       save.hinted = true;
     }
@@ -503,17 +522,34 @@
     const my = (k.Space ? 1 : 0) - (k.KeyC || k.KeyQ ? 1 : 0);
     let ax = fx * mz + rx * mx, ay = fy * mz + my, az = fz * mz + rz * mx;
     const al = Math.hypot(ax, ay, az);
+    const boost = 1 + partCount() * 0.22;
     if (al > 0.001) {
-      const acc = (k.ShiftLeft || k.ShiftRight ? 13 : 7.5) / al;
+      const acc = ((k.ShiftLeft || k.ShiftRight ? 13 : 7.5) * boost) / al;
       pl.vx += ax * acc * dt;
       pl.vy += ay * acc * dt;
       pl.vz += az * acc * dt;
+    }
+    const flow = W.current(pl.x, pl.z);
+    if (flow) {
+      pl.vx += flow[0] * dt;
+      pl.vz += flow[1] * dt;
+    }
+    if (Cr.wake) {
+      pl.vx += Cr.wake[0] * dt;
+      pl.vz += Cr.wake[1] * dt;
+      Cr.wake = null;
+    }
+    if (Cr.nudge) {
+      pl.vx += Cr.nudge[0];
+      pl.vy += Cr.nudge[1];
+      pl.vz += Cr.nudge[2];
+      Cr.nudge = null;
     }
     const drag = Math.exp(-1.7 * dt);
     pl.vx *= drag; pl.vy *= drag; pl.vz *= drag;
 
     // movimento horizontal: não deixa sair do mar nem subir nas bordas do mapa
-    const ok = (x, z) => Math.hypot(x, z) < 255 && W.heightAt(x, z) < -1.5;
+    const ok = (x, z) => Math.hypot(x, z) < 348 && W.heightAt(x, z) < -1.5;
     let nx = pl.x + pl.vx * dt, nz = pl.z + pl.vz * dt;
     if (!ok(nx, nz)) {
       if (ok(nx, pl.z)) {
@@ -568,8 +604,8 @@
   }
 
   // ---------- bolhas ----------
-  function spawnBubble(x, y, z, s, life, vy) {
-    if (bubbles.length < 560) bubbles.push({ x: x, y: y, z: z, s: s, life: life, max: life, vy: vy, ph: Math.random() * TAU });
+  function spawnBubble(x, y, z, s, life, vy, col) {
+    if (bubbles.length < 560) bubbles.push({ x: x, y: y, z: z, s: s, life: life, max: life, vy: vy, ph: Math.random() * TAU, c: col || null });
   }
   function updateBubbles(dt) {
     if (mode === 'play' && pl.y < 0.05) {
@@ -617,7 +653,8 @@
       }
       const o = n++ * 8, age = 1 - b.life / b.max;
       bubData[o] = b.x; bubData[o + 1] = b.y; bubData[o + 2] = b.z; bubData[o + 3] = b.s * (1 + age * 0.7);
-      bubData[o + 4] = 0.75; bubData[o + 5] = 0.95; bubData[o + 6] = 1;
+      const bc = b.c || [0.75, 0.95, 1];
+      bubData[o + 4] = bc[0]; bubData[o + 5] = bc[1]; bubData[o + 6] = bc[2];
       bubData[o + 7] = Math.min(1, b.life * 2) * Math.min(1, age * 12) * 0.6;
     }
     frame.bubbles.count = n;
@@ -641,11 +678,28 @@
     renderJournal();
     saveGame();
   }
+  function collectPart(i) {
+    save.parts[i] = true;
+    const q = W.parts[i], n = partCount();
+    bursts.push({ x: q.x, y: q.y, z: q.z, t: 0 });
+    A.chime();
+    if (sonar.kind === 'part' && sonar.i === i) sonar.on = false;
+    if (n === 1) discover('propulsor');
+    const left = NPART - n;
+    toast(
+      q.name,
+      n === NPART
+        ? 'As três peças encaixaram. Você corta a água bem mais rápido.'
+        : 'Peça ' + n + ' de 3. O nado ficou mais leve.' + (left === 1 ? ' Falta uma.' : ' Faltam ' + left + '.')
+    );
+    renderJournal();
+    saveGame();
+  }
   function ping() {
     if (sonar.cool > 0) return;
     sonar.cool = 1.6;
     A.ping();
-    let best = -1, bd = 1e9;
+    let best = -1, bd = 1e9, kind = 'pearl';
     for (let i = 0; i < NP; i++) {
       if (save.pearls[i]) continue;
       const q = W.pearls[i], d = Math.hypot(q.x - pl.x, q.y - pl.y, q.z - pl.z);
@@ -655,10 +709,22 @@
       }
     }
     if (best < 0) {
-      hint('O sonar volta em silêncio: todas as pérolas já estão com você.');
+      kind = 'part';
+      for (let i = 0; i < NPART; i++) {
+        if (save.parts[i]) continue;
+        const q = W.parts[i], d = Math.hypot(q.x - pl.x, q.y - pl.y, q.z - pl.z);
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
+      }
+    }
+    if (best < 0) {
+      hint('O sonar volta em silêncio. Não há mais nada para achar.');
       return;
     }
-    const q = W.pearls[best], pan = M.clamp(((q.x - pl.x) * Math.cos(pl.yaw) + (q.z - pl.z) * Math.sin(pl.yaw)) / (bd || 1), -1, 1);
+    sonar.kind = kind;
+    const q = kind === 'part' ? W.parts[best] : W.pearls[best], pan = M.clamp(((q.x - pl.x) * Math.cos(pl.yaw) + (q.z - pl.z) * Math.sin(pl.yaw)) / (bd || 1), -1, 1);
     A.pingEcho(Math.min(2.2, 0.25 + bd / 160), pan);
     sonar.on = true;
     sonar.t = 9;
@@ -673,7 +739,7 @@
       el.classList.remove('show');
       return;
     }
-    const q = W.pearls[sonar.i], pr = Rn.project(q.x, q.y, q.z), w = window.innerWidth, h = window.innerHeight;
+    const q = (sonar.kind === 'part' ? W.parts : W.pearls)[sonar.i], pr = Rn.project(q.x, q.y, q.z), w = window.innerWidth, h = window.innerHeight;
     let sx = pr[0], sy = pr[1];
     const m = Math.max(Math.abs(sx) / 0.9, Math.abs(sy) / 0.84), off = pr[2] <= 0 || m > 1;
     if (off) {
@@ -693,6 +759,11 @@
       const q = W.pearls[i];
       if (Math.abs(q.x - pl.x) < 2.3 && Math.hypot(q.x - pl.x, q.y - pl.y, q.z - pl.z) < 2.3) collect(i);
     }
+    for (let i = 0; i < NPART; i++) {
+      if (save.parts[i]) continue;
+      const q = W.parts[i];
+      if (Math.abs(q.x - pl.x) < 2.4 && Math.hypot(q.x - pl.x, q.y - pl.y, q.z - pl.z) < 2.4) collectPart(i);
+    }
     const z = W.zoneAt(pl.x, pl.y, pl.z);
     if (z && z !== curZone) {
       const el = $('zone');
@@ -707,6 +778,17 @@
     if (Cr.nearTurtle < 7) discover('tartaruga');
     if (Cr.whale.dist < 48) discover('baleia');
     if (Cr.nearJelly < 12) discover('aguaviva');
+    if (Cr.nearShark < 14) discover('tubarao');
+    if (Cr.nearOctopus < 8) discover('polvo');
+    if (Cr.nearSeahorse < 6) discover('cavalo');
+    if (Cr.nearSunfish < 16) discover('peixelua');
+    if (Cr.nearAngler < 16) discover('tamboril');
+    if (Cr.nearSquid < 16) discover('lula');
+    if (Cr.nearLeviathan < 46 && pl.y < -40) discover('leviata');
+    if (!currentNoted && W.current(pl.x, pl.z)) {
+      currentNoted = true;
+      toast('Corrente', 'A água aqui gira devagar. Deixe-se levar, ou nade contra ela.');
+    }
     if (!darkHint && pl.y < -46 && !flash) {
       darkHint = true;
       hint('Está escuro aqui embaixo. F acende a lanterna.');
@@ -717,6 +799,7 @@
     $('depth').textContent = onTop ? '0' : Math.round(-pl.y);
     $('depth-unit').textContent = onTop ? '' : 'm';
     $('depth-label').textContent = onTop ? 'superfície' : 'profundidade';
+    $('part-n').textContent = partCount();
     const spans = $('compass').children;
     for (let i = 0; i < spans.length; i++) {
       const d = wrap(+spans[i].dataset.a - pl.yaw), s = spans[i].style;
@@ -763,9 +846,21 @@
       pearlData[o + 4] = 0; pearlData[o + 5] = 1; pearlData[o + 6] = 0; pearlData[o + 7] = 0;
       pearlData[o + 8] = 1; pearlData[o + 9] = 0.97; pearlData[o + 10] = 0.9; pearlData[o + 11] = 0.55 + pulse * 0.5;
       if (got || Math.abs(q.x - pl.x) > 150 || Math.abs(q.z - pl.z) > 150) continue;
-      const g = n++ * 8, tgt = sonar.on && sonar.i === i ? 1.6 : 1;
+      const g = n++ * 8, tgt = sonar.on && sonar.kind !== 'part' && sonar.i === i ? 1.6 : 1;
       glowData[g] = q.x; glowData[g + 1] = q.y + 0.1; glowData[g + 2] = q.z; glowData[g + 3] = (2.6 + pulse * 0.8) * tgt;
       glowData[g + 4] = 1; glowData[g + 5] = 0.9; glowData[g + 6] = 0.68; glowData[g + 7] = 0.5 * tgt;
+    }
+    for (let i = 0; i < NPART; i++) {
+      const q = W.parts[i], o = i * 12, got = save.parts[i], pulse = 0.5 + 0.5 * Math.sin(time * 2.4 + i);
+      const tint = PART_TINT[i];
+      partData[o] = q.x; partData[o + 1] = q.y + (got ? 0 : Math.sin(time * 1.1 + i) * 0.08); partData[o + 2] = q.z;
+      partData[o + 3] = got ? 0 : 0.85;
+      partData[o + 4] = time * 0.6; partData[o + 5] = 0; partData[o + 6] = i; partData[o + 7] = 0.8;
+      partData[o + 8] = tint[0]; partData[o + 9] = tint[1]; partData[o + 10] = tint[2]; partData[o + 11] = got ? 0 : 0.7 + pulse * 0.4;
+      if (got || n >= 60 || Math.abs(q.x - pl.x) > 150 || Math.abs(q.z - pl.z) > 150) continue;
+      const g = n++ * 8, tgt = sonar.on && sonar.kind === 'part' && sonar.i === i ? 1.5 : 1;
+      glowData[g] = q.x; glowData[g + 1] = q.y + 0.2; glowData[g + 2] = q.z; glowData[g + 3] = (2.2 + pulse) * tgt;
+      glowData[g + 4] = tint[0]; glowData[g + 5] = tint[1]; glowData[g + 6] = tint[2]; glowData[g + 7] = 0.55;
     }
     for (let i = bursts.length - 1; i >= 0; i--) {
       const b = bursts[i];
@@ -835,7 +930,20 @@
     aboveSm += ((air ? 1 : 0) - aboveSm) * Math.min(1, dt * 1.5);
     splashK *= Math.exp(-dt * 3.2);
 
-    Cr.update(time, dt, camPos);
+    const swim = Math.hypot(pl.vx, pl.vy, pl.vz);
+    Cr.update(time, dt, camPos, { speed: swim, flash: flashK, yaw: pl.yaw });
+    while (Cr.pending.length) {
+      const n = Cr.pending.shift();
+      toast(n[0], n[1]);
+    }
+    if (Cr.ink) {
+      const ink = Cr.ink;
+      for (let i = 0; i < 22; i++) {
+        const r = Math.random;
+        spawnBubble(ink.x + (r() - 0.5) * 1.6, ink.y + (r() - 0.5) * 1.2, ink.z + (r() - 0.5) * 1.6, 0.12 + r() * 0.22, 3.5, 0.3 + r() * 0.5, [0.12, 0.08, 0.16]);
+      }
+      Cr.ink = null;
+    }
     updateBubbles(dt);
     if (mode === 'play') {
       checkT -= dt;
@@ -897,7 +1005,7 @@
       loadAll();
       if (touchOn && settings.quality === 'auto') autoLevel = 0;
       const B = Cr.buf;
-      frame.dyn = [B.fishA, B.fishB, B.manta, B.turtle, B.whale, B.dolphin, B.gull, pearlDyn, B.jelly];
+      frame.dyn = [B.fishA, B.fishB, B.shark, B.seahorse, B.octopus, B.crab, B.moray, B.sunfish, B.angler, B.squid, B.manta, B.turtle, B.whale, B.leviathan, B.dolphin, B.gull, pearlDyn, partDyn, B.jelly];
       buildCompass();
       bindInput();
       syncSettingsUI();

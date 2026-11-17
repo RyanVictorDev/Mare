@@ -801,6 +801,135 @@
     return m;
   }
 
+  // ---------- vida nova e o propulsor (nariz em +z, como os outros) ----------
+
+  function shark() {
+    const m = new Mesh(), back = [0.45, 0.5, 0.56], belly = [0.82, 0.84, 0.86];
+    const zs = [0.55, 0.42, 0.22, 0, -0.22, -0.4, -0.52];
+    const rr = [[0.02, 0.016], [0.07, 0.05], [0.1, 0.07], [0.09, 0.065], [0.06, 0.045], [0.03, 0.025], [0.012, 0.01]];
+    tube(m, zs.map(z => [0, 0, z]), rr, 7, (i, j, c, s) => mixc(back, belly, M.smooth(0.2, -0.7, s)));
+    m.tri(m.v(0, 0.06, 0.02, back, 0), m.v(0, 0.22, -0.08, back, 0), m.v(0, 0.05, -0.2, back, 0));
+    m.tri(m.v(0, 0, -0.46, back, 0), m.v(-0.16, 0.04, -0.68, back, 0), m.v(0, 0, -0.58, back, 0));
+    m.tri(m.v(0, 0, -0.46, back, 0), m.v(0, 0, -0.58, back, 0), m.v(0.16, -0.02, -0.68, belly, 0));
+    for (const sd of [-1, 1]) {
+      m.tri(m.v(sd * 0.06, -0.02, 0.12, back, 0), m.v(sd * 0.28, -0.04, -0.02, belly, 0), m.v(sd * 0.04, -0.02, -0.06, back, 0));
+      const e = [0.08, 0.08, 0.09], ex = sd * 0.055, ey = 0.02, ez = 0.4, s = 0.012;
+      m.quad(m.v(ex, ey + s, ez, e, 0), m.v(ex, ey, ez + s, e, 0), m.v(ex, ey - s, ez, e, 0), m.v(ex, ey, ez - s, e, 0));
+    }
+    return m;
+  }
+
+  function seahorse() {
+    const m = new Mesh(), c = [0.95, 0.62, 0.22], pale = [1, 0.86, 0.55];
+    const pts = [];
+    for (let i = 0; i <= 7; i++) {
+      const t = i / 7;
+      pts.push([(t - 0.2) * 0.05, 0.42 - t * 0.78, -0.05 - t * t * 0.42]);
+    }
+    tube(m, pts, pts.map((_, i) => 0.045 - i * 0.004), 5, (i, j, cs, s) => mixc(c, pale, s * 0.5 + 0.5));
+    tube(m, [[0.02, 0.4, -0.04], [0.16, 0.46, 0.08]], [0.03, 0.018], 5, pale);
+    m.tri(m.v(0, 0.34, -0.02, c, 0), m.v(-0.08, 0.5, -0.08, c, 0), m.v(0.08, 0.5, -0.08, c, 0));
+    return m;
+  }
+
+  function octopus() {
+    const m = new Mesh(), skin = [0.55, 0.22, 0.28], spot = [0.85, 0.45, 0.32];
+    sphere(m, [0, 0.12, 0.05], [0.22, 0.18, 0.2], 8, 6, (x, y) => mixc(skin, spot, M.smooth(-0.2, 0.6, y)));
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * TAU, cs = Math.cos(a), sn = Math.sin(a);
+      const pts = [];
+      for (let i = 0; i <= 4; i++) {
+        const t = i / 4;
+        pts.push([cs * (0.12 + t * 0.28), 0.02 - t * t * 0.22, -0.05 - t * 0.55]);
+      }
+      tube(m, pts, [0.045, 0.04, 0.032, 0.022, 0.012], 4, skin);
+    }
+    for (const sd of [-1, 1]) {
+      const e = [0.15, 0.08, 0.06], ex = sd * 0.08, ey = 0.16, ez = 0.16, s = 0.02;
+      m.quad(m.v(ex, ey + s, ez, e, 0), m.v(ex, ey, ez + s, e, 0), m.v(ex, ey - s, ez, e, 0), m.v(ex, ey, ez - s, e, 0));
+    }
+    return m;
+  }
+
+  function crab() {
+    const m = new Mesh(), sh = [0.78, 0.32, 0.18], leg = [0.48, 0.18, 0.1];
+    sphere(m, [0, 0.06, 0], [0.26, 0.1, 0.2], 8, 5, sh);
+    for (let i = 0; i < 4; i++) {
+      for (const sd of [-1, 1]) {
+        const z = -0.12 + i * 0.08;
+        m.tri(m.v(sd * 0.16, 0.02, z, leg, 1), m.v(sd * 0.4, -0.05, z + 0.05, leg, 1), m.v(sd * 0.18, 0.04, z + 0.04, leg, 1));
+      }
+    }
+    for (const sd of [-1, 1]) {
+      m.tri(m.v(sd * 0.12, 0.04, 0.16, sh, 0), m.v(sd * 0.28, 0.06, 0.28, leg, 0.4), m.v(sd * 0.22, 0.02, 0.14, sh, 0));
+    }
+    return m;
+  }
+
+  function moray() {
+    const m = new Mesh(), a = [0.28, 0.32, 0.2], b = [0.72, 0.62, 0.28];
+    const pts = [], radii = [];
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      pts.push([Math.sin(t * 3) * 0.08, Math.cos(t * 2) * 0.04, 0.35 - t * 1.15]);
+      radii.push(0.07 * (1 - t * 0.65));
+    }
+    tube(m, pts, radii, 6, (i, j) => (j % 2 ? a : b));
+    for (const sd of [-1, 1]) {
+      const e = [0.9, 0.85, 0.4], ex = sd * 0.04, ey = 0.02, ez = 0.32, s = 0.012;
+      m.quad(m.v(ex, ey + s, ez, e, 0), m.v(ex, ey, ez + s, e, 0), m.v(ex, ey - s, ez, e, 0), m.v(ex, ey, ez - s, e, 0));
+    }
+    return m;
+  }
+
+  function sunfish() {
+    const m = new Mesh(), body = [0.55, 0.62, 0.66], fin = [0.4, 0.48, 0.52];
+    sphere(m, [0, 0, 0], [0.12, 0.5, 0.38], 10, 8, (x, y) => mixc(body, [0.75, 0.78, 0.8], M.smooth(-0.2, 0.4, y)));
+    m.tri(m.v(0, 0.42, -0.05, fin, 0), m.v(0, 0.78, -0.18, fin, 0), m.v(0, 0.4, -0.22, fin, 0));
+    m.tri(m.v(0, -0.42, -0.02, fin, 0), m.v(0, -0.4, -0.2, fin, 0), m.v(0, -0.75, -0.12, fin, 0));
+    m.tri(m.v(0, 0.08, -0.32, fin, 0), m.v(-0.02, 0, -0.62, fin, 0), m.v(0.02, -0.08, -0.32, fin, 0));
+    const e = [0.12, 0.12, 0.14];
+    m.quad(m.v(0.1, 0.08, 0.28, e, 0), m.v(0.1, 0.04, 0.34, e, 0), m.v(0.1, 0, 0.28, e, 0), m.v(0.1, 0.04, 0.22, e, 0));
+    return m;
+  }
+
+  function angler() {
+    const m = new Mesh(), body = [0.12, 0.13, 0.16], lure = [0.75, 1, 0.85];
+    sphere(m, [0, 0, 0.05], [0.2, 0.16, 0.18], 8, 6, body);
+    tube(m, [[0, 0, -0.05], [0, 0.02, -0.28], [0, 0, -0.42]], [[0.1, 0.08], [0.06, 0.05], [0.02, 0.016]], 6, body);
+    tube(m, [[0, 0.12, 0.02], [0, 0.32, 0.08], [0, 0.26, 0.28]], [0.02, 0.015, 0.012], 4, body);
+    sphere(m, [0, 0.26, 0.3], [0.045, 0.045, 0.045], 6, 4, lure);
+    m.tri(m.v(-0.08, -0.02, 0.2, [0.4, 0.1, 0.12], 0), m.v(0.08, -0.02, 0.2, [0.4, 0.1, 0.12], 0), m.v(0, -0.05, 0.12, body, 0));
+    return m;
+  }
+
+  function squid() {
+    const m = new Mesh(), skin = [0.65, 0.45, 0.95], fin = [0.8, 0.7, 1];
+    tube(m, [[0, 0, 0.35], [0, 0, 0.1], [0, 0, -0.15]], [[0.06, 0.05], [0.14, 0.1], [0.08, 0.06]], 7, (i, j, c, s) => mixc(skin, [0.9, 0.85, 1], M.smooth(0, -0.8, s)));
+    m.tri(m.v(0, 0.08, 0.2, fin, 0), m.v(-0.22, 0.02, 0.02, fin, 0), m.v(0, 0.02, -0.05, fin, 0));
+    m.tri(m.v(0, 0.08, 0.2, fin, 0), m.v(0, 0.02, -0.05, fin, 0), m.v(0.22, 0.02, 0.02, fin, 0));
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * TAU, cs = Math.cos(a), sn = Math.sin(a);
+      tube(m, [[cs * 0.04, sn * 0.03, -0.12], [cs * 0.1, sn * 0.06 - 0.04, -0.45]], [0.02, 0.008], 3, skin);
+    }
+    return m;
+  }
+
+  function part() {
+    const m = new Mesh(), metal = [0.78, 0.82, 0.86], core = [0.55, 0.95, 1];
+    tube(m, [[0, 0, -0.06], [0, 0, 0.08]], [0.22, 0.22], 8, metal);
+    sphere(m, [0, 0, 0.02], [0.1, 0.1, 0.1], 8, 5, core);
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * TAU, c = Math.cos(a), s = Math.sin(a);
+      m.tri(
+        m.v(c * 0.08, s * 0.08, 0, metal, 0),
+        m.v(c * 0.46, s * 0.46, -0.2, core, 0),
+        m.v(c * 0.12 - s * 0.1, s * 0.12 + c * 0.1, -0.04, metal, 0)
+      );
+    }
+    return m;
+  }
+
   M.Mesh = Mesh;
   M.buildMeshes = function () {
     const info = {};
@@ -828,6 +957,15 @@
       dolphin: dolphin().build(false),
       gull: gull().build(false),
       jelly: jelly().build(false),
+      shark: shark().build(false),
+      seahorse: seahorse().build(false),
+      octopus: octopus().build(false),
+      crab: crab().build(false),
+      moray: moray().build(false),
+      sunfish: sunfish().build(false),
+      angler: angler().build(false),
+      squid: squid().build(false),
+      part: part().build(false),
       wreck: wreck(info).build(true),
       ruins: ruins(info).build(true),
     };
