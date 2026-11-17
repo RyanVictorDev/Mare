@@ -538,24 +538,34 @@
     }
     B.moray.count = nm;
 
-    // ----- peixe-lua: vem ver quem ficou parado -----
+    // ----- peixe-lua: chega de lado, para o disco ficar de frente -----
     {
       const m = SUNFISH;
-      if (!m.hx) { m.hx = m.x; m.hz = m.z; }
-      const dx = px - m.x, dz = pz - m.z, dist = Math.hypot(dx, m.y - py, dz) || 1;
+      if (m.hx == null) { m.hx = m.x; m.hz = m.z; m.yaw = 1.1; }
+      const dx = px - m.x, dz = pz - m.z;
+      const horiz = Math.hypot(dx, dz) || 1;
+      const dist = Math.hypot(dx, m.y - py, dz) || 1;
       m.watch = M.clamp((m.watch || 0) + (swim < 0.75 && dist < 24 ? dt : -dt * 0.4), 0, 5);
-      if (m.watch < 0.4) {
-        m.x += (m.hx - m.x) * Math.min(1, dt * 0.12);
-        m.z += (m.hz - m.z) * Math.min(1, dt * 0.12);
-      } else if (m.watch > 1.7 && dist > 7) {
-        m.x += (dx / dist) * dt * 1.15;
-        m.z += (dz / dist) * dt * 1.15;
+      const ang = t * 0.07;
+      let vx, vz;
+      if (m.watch > 0.6) {
+        const tx = -dz / horiz, tz = dx / horiz;
+        const radial = M.clamp((horiz - 10) / 8, -1, 1);
+        vx = tx * 1.15 + (dx / horiz) * radial * 0.7;
+        vz = tz * 1.15 + (dz / horiz) * radial * 0.7;
+      } else {
+        vx = m.hx + Math.cos(ang) * 9 - m.x;
+        vz = m.hz + Math.sin(ang) * 6 - m.z;
       }
+      const vd = Math.hypot(vx, vz) || 1;
+      const spd = m.watch > 1.4 ? 1.05 : 0.7;
+      m.x += (vx / vd) * dt * spd;
+      m.z += (vz / vd) * dt * spd;
+      m.yaw += wrap(Math.atan2(vx, vz) - m.yaw) * Math.min(1, dt * 2.2);
       if (dist < 10 && m.watch > 1.7) note('sunfish', 'Visita lenta', 'O peixe-lua veio até você. Não tinha pressa nenhuma.');
       const y = Math.max(W.heightAt(m.x, m.z) + 3, Math.min(-2.2, m.y));
-      const yaw = dist < 30 ? Math.atan2(dx, dz) : Math.sin(t * 0.05);
-      if (Math.hypot(m.x - px, m.z - pz) < 160) put(B.sunfish.data, 0, m.x, y, m.z, 5.6, yaw, 0, 0, 0.45, 1, 1, 1, 0);
-      B.sunfish.count = Math.hypot(m.x - px, m.z - pz) < 160 ? 1 : 0;
+      if (horiz < 160) put(B.sunfish.data, 0, m.x, y, m.z, 5.6, m.yaw, 0, 0, 0.45, 1, 1, 1, 0);
+      B.sunfish.count = horiz < 160 ? 1 : 0;
       Cr.nearSunfish = dist;
     }
 
