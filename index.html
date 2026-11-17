@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#02141f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Maré — um mergulho tranquilo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="gl"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="compass"></div>
+    <div id="stats">
+      <div class="stat"><div><span id="depth">0</span><small id="depth-unit">m</small></div><label id="depth-label">profundidade</label></div>
+      <div class="stat"><div><span id="pearl-n">0</span><small>/12</small></div><label>pérolas</label></div>
+    </div>
+    <div id="zone"></div>
+    <div id="toast"></div>
+    <div id="hint"></div>
+    <div id="sonar"><i></i><b></b></div>
+    <div id="lamp">lanterna acesa</div>
+    <div id="fps" class="hidden"></div>
+  </div>
+
+  <div id="touch" class="hidden">
+    <div id="stick" aria-label="Nadar"><i></i></div>
+    <div id="touch-actions">
+      <button type="button" data-hold="Space">subir</button>
+      <button type="button" data-hold="KeyC">descer</button>
+      <button type="button" data-hold="ShiftLeft">rápido</button>
+      <button type="button" data-tap="sonar">sonar</button>
+      <button type="button" data-tap="lamp">luz</button>
+      <button type="button" data-tap="journal">diário</button>
+      <button type="button" data-tap="pause">pausa</button>
+    </div>
+  </div>
+
+  <div id="journal" class="hidden">
+    <div class="panel">
+      <h2>Diário de mergulho</h2>
+      <p class="sub"><span id="j-count">0</span> de <span id="j-total">0</span> descobertas · <span id="j-pearls">0</span> de 12 pérolas</p>
+      <ul id="j-list"></ul>
+      <p class="foot"><span class="keys-only">Tab fecha o diário</span><span class="touch-only">Toque fora para fechar</span></p>
+    </div>
+  </div>
+
+  <div id="menu" class="screen hidden">
+    <div class="title">
+      <h1>MARÉ</h1>
+      <p>um mergulho tranquilo</p>
+    </div>
+    <div class="buttons">
+      <button id="btn-dive" class="primary">Mergulhar</button>
+      <button id="btn-new" class="hidden">Novo mergulho</button>
+    </div>
+    <ul class="keys">
+      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> nadar</li>
+      <li><kbd>Mouse</kbd> olhar</li>
+      <li><kbd>Espaço</kbd> subir até a superfície · <kbd>C</kbd> descer</li>
+      <li><kbd>Shift</kbd> nadar mais rápido</li>
+      <li><kbd>E</kbd> sonar de pérolas</li>
+      <li><kbd>F</kbd> lanterna</li>
+      <li><kbd>Tab</kbd> diário</li>
+      <li><kbd>Esc</kbd> pausa e ajustes</li>
+    </ul>
+    <p class="touch-help">Arraste na tela para olhar. O círculo da esquerda nada; à direita ficam subir, descer, rápido, sonar, lanterna, diário e pausa.</p>
+    <p class="note">Sem pressa e sem perigo: não há oxigênio para acabar. Dá para subir até o ar livre. Fica melhor com fones de ouvido.</p>
+  </div>
+
+  <div id="pause" class="screen hidden">
+    <div class="panel">
+      <h2>Pausa</h2>
+      <button id="btn-resume" class="primary">Continuar</button>
+      <div class="row">
+        <label>Qualidade</label>
+        <div class="seg" id="quality">
+          <button data-q="auto">Auto</button><button data-q="low">Leve</button><button data-q="medium">Média</button><button data-q="high">Alta</button>
+        </div>
+      </div>
+      <div class="row"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="1" step="0.01"></div>
+      <div class="row"><label for="sens" id="sens-label">Sensibilidade do mouse</label><input id="sens" type="range" min="0.3" max="2.5" step="0.05"></div>
+      <div class="row checks">
+        <label><input id="music" type="checkbox"> Música</label>
+        <label><input id="invert" type="checkbox"> Inverter eixo vertical</label>
+        <label><input id="showfps" type="checkbox"> Mostrar FPS</label>
+      </div>
+      <div class="buttons">
+        <button id="btn-journal">Diário de mergulho</button>
+        <button id="btn-reset">Recomeçar do zero</button>
+      </div>
+      <p class="foot"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> nadar · <kbd>Espaço</kbd> sobe até a superfície · <kbd>C</kbd> desce · <kbd>Shift</kbd> rápido · <kbd>E</kbd> sonar · <kbd>F</kbd> lanterna · <kbd>Tab</kbd> diário</p>
+    </div>
+  </div>
+
+  <div id="loading" class="screen"><p>preparando o mergulho…</p></div>
+  <div id="error" class="screen hidden"><div class="panel"><h2>Não deu para mergulhar</h2><p id="error-msg"></p></div></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/meshes.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/creatures.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
